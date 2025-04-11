@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Language Learning App</title>
+    <style>
+        body{
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #ff9a9e, #de937f);
+            text-align: center;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        .header{
+            background: #ff758c;
+            padding: 15px;
+            color: white;
+            font-size: 20px;
+            font-weight: bold;
+        }
+        .container{
+            display: flex;
+            flex: 1;
+            padding: 20px;
+            gap: 20px;
+        }
+        .section{
+            flex: 1;
+            background: white;
+            padding: 20px;
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            text-align: center;
+        }
+        h1, h2{
+            color: #333;
+        }
+        .input-area, .dictionary-search {
+            margin-bottom: 20px;
+        }
+        input{
+            padding: 10px;
+            margin: 5px;
+            width: 80%;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            outline: none;
+            transition: 0.3s;
+        }
+        input:focus{
+            border-color: #ff758c;
+        }
+        button{
+            padding: 10px 15px;
+            background-color: #ff758c;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+        button:hover{
+            background-color: #e94e77;
+        }
+        .word-list{
+            text-align: left;
+            max-height: 250px;
+            overflow-y: auto;
+        }
+        ul {
+            list-style: none;
+            padding: 0;
+        }
+        li {
+            background: #fff;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 5px;
+            box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .delete-btn {
+            background-color: #ff4d4d;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            cursor: pointer;
+            border-radius: 5px;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+        .delete-btn:hover {
+            background-color: #cc0000;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 10px;
+            background: #f1f1f1;
+            border-radius: 5px;
+            text-align: left;
+            max-height: 250px;
+            overflow-y: auto;
+        }
+        .footer {
+            background: #333;
+            color: white;
+            padding: 10px;
+            text-align: center;
+        }
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">Language Learning App</div>
+    <div class="container">
+        <!-- Vocabulary Section -->
+        <div class="section">
+            <h1>Save and Review Words</h1>
+            <div class="input-area">
+                <input type="text" id="word" placeholder="Enter word">
+                <input type="text" id="meaning" placeholder="Enter meaning">
+                <button onclick="addWord()">Add Word</button>
+            </div>
+            <div class="word-list">
+                <h2>Saved Words</h2>
+                <ul id="words"></ul>
+            </div>
+        </div>
+
+        <!-- Dictionary Section -->
+        <div class="section">
+            <h1>Search for a Word</h1>
+            <div class="dictionary-search">
+                <input type="text" id="searchWord" placeholder="Enter a word">
+                <button onclick="searchDictionary()">Search</button>
+            </div>
+            <div id="definition" class="result">Definition will appear here...</div>
+        </div>
+    </div>
+    <div class="footer">
+        &copy; 2025 Language Learning App. All rights reserved.
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", loadWords);
+
+        function loadWords() {
+            fetch('http://localhost:5000/words')
+                .then(res => res.json())
+                .then(words => {
+                    const wordsList = document.getElementById("words");
+                    wordsList.innerHTML = "";
+                    words.forEach(word => {
+                        let li = document.createElement("li");
+                        li.innerHTML = `<strong>${word.word}</strong>: ${word.meaning}
+                            <button class="delete-btn" onclick="deleteWord('${word._id}')">Delete</button>`;
+                        wordsList.appendChild(li);
+                    });
+                });
+        }
+
+        function addWord() {
+            let word = document.getElementById("word").value.trim();
+            let meaning = document.getElementById("meaning").value.trim();
+            if (!word || !meaning) return alert("Please enter both word and meaning.");
+
+            fetch('http://localhost:5000/words', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ word, meaning })
+            })
+            .then(() => {
+                document.getElementById("word").value = "";
+                document.getElementById("meaning").value = "";
+                loadWords();
+            });
+        }
+
+        function deleteWord(id) {
+            fetch(`http://localhost:5000/words/${id}`, { method: 'DELETE' })
+                .then(() => loadWords());
+        }
+
+        function searchDictionary() {
+            let word = document.getElementById("searchWord").value.trim();
+            if (word === "") {
+                alert("Please enter a word to search.");
+                return;
+            }
+
+            fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.title) {
+                        document.getElementById("definition").innerHTML = "Word not found.";
+                    } else {
+                        let meanings = data[0].meanings.map(m => `<p><strong>${m.partOfSpeech}:</strong> ${m.definitions[0].definition}</p>`).join("");
+                        document.getElementById("definition").innerHTML = meanings;
+                    }
+                })
+                .catch(() => {
+                    document.getElementById("definition").innerHTML = "Error fetching word definition.";
+                });
+        }
+    </script>
+</body>
+</html>
